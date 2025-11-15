@@ -1,8 +1,8 @@
 # app/models.py
 import datetime as dt
 
+from datetime import datetime
 from .extensions import db
-
 
 class User(db.Model):
     __tablename__ = "users"
@@ -50,6 +50,8 @@ class Club(db.Model):
         lazy="dynamic",
     )
 
+    events = db.relationship("Event", backref="club", lazy=True)
+
     def __repr__(self) -> str:
         return f"<Club id={self.id} name={self.name!r}>"
 
@@ -74,3 +76,32 @@ class Swipe(db.Model):
 
     def __repr__(self) -> str:
         return f"<Swipe user_id={self.user_id} club_id={self.club_id} liked={self.liked}>"
+
+class Event(db.Model):
+    __tablename__ = "events"
+
+    id = db.Column(db.Integer, primary_key=True)
+    club_id = db.Column(db.Integer, db.ForeignKey("clubs.id"), nullable=False)
+
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=True)
+
+    location = db.Column(db.String(255), nullable=True)
+    is_online = db.Column(db.Boolean, default=False, nullable=False)
+    join_link = db.Column(db.String(512), nullable=True)
+
+    capacity = db.Column(db.Integer, nullable=True)
+
+    visibility_mode = db.Column(db.String(32), nullable=False, default="public")
+    visible_email_domains = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )

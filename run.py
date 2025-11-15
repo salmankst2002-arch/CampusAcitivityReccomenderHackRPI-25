@@ -1,8 +1,7 @@
-# run.py
 from app import create_app
 
 app = create_app()
 
 if __name__ == "__main__":
-    # デバッグ用
-    app.run(debug=True)
+    # Use a non-5000 port to avoid conflict with AirPlay/AirTunes on macOS
+    app.run(debug=True, host="127.0.0.1", port=5001)

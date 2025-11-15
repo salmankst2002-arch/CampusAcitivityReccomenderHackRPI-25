@@ -3,16 +3,19 @@ import click
 
 from app import create_app
 from app.extensions import db
-from app.models import User, Club
+from app.models import User, Club, Event  # Import Event as well
+from datetime import datetime
 
 
 @click.command()
 def seed():
-    """Seed the database with initial Users and Clubs using the 10-tag vocab."""
+    """Seed the database with initial Users, Clubs, and Events using the 10-tag vocab."""
     app = create_app()
 
     with app.app_context():
         # Clear existing data (development only)
+        # NOTE: Order matters because of foreign key constraints.
+        db.session.query(Event).delete()
         db.session.query(User).delete()
         db.session.query(Club).delete()
         db.session.commit()
@@ -29,7 +32,6 @@ def seed():
                 name="Alice",
                 year="freshman",
                 major="Computer Science",
-                # Alice is into tech, gaming and a bit of creative things
                 interests="academic_stem_tech,gaming,creative_arts",
             ),
             User(
@@ -37,7 +39,6 @@ def seed():
                 name="Bob",
                 year="sophomore",
                 major="Economics",
-                # Bob is more business and career oriented, but also social
                 interests="business_career,service,cultural",
             ),
             User(
@@ -45,7 +46,6 @@ def seed():
                 name="Carol",
                 year="junior",
                 major="Environmental Science",
-                # Carol cares about environment / activism and outdoors
                 interests="activism_environment,sports,service",
             ),
             User(
@@ -53,8 +53,15 @@ def seed():
                 name="Dave",
                 year="freshman",
                 major="Undeclared",
-                # Dave is mainly social / gaming / casual sports
                 interests="gaming,sports,cultural",
+            ),
+            # Extra user with a campus-style email domain for visibility testing
+            User(
+                email="yusuke@albany.edu",
+                name="Yusuke",
+                year="freshman",
+                major="Computer Science",
+                interests="academic_stem_tech,activism_environment",
             ),
         ]
 
@@ -168,7 +175,102 @@ def seed():
         db.session.add_all(users + clubs)
         db.session.commit()
 
-        print("Seed completed: inserted Users and Clubs with 10-tag vocab.")
+        # Reload from DB so that IDs are available
+        all_users = User.query.order_by(User.id).all()
+        all_clubs = Club.query.order_by(Club.id).all()
+
+        # Simple helpers to pick specific clubs by index
+        ai_club = all_clubs[0]   # AI & Robotics Lab Club
+        startup_club = all_clubs[1]
+        jazz_club = all_clubs[2]
+        soccer_club = all_clubs[3]
+
+        # ------------------------------------------------------------------
+        # Events
+        # visibility_mode:
+        #   "public"          -> visible to everyone
+        #   "members_only"    -> visible only to club members (stub for now)
+        #   "domain_allowlist" -> only listed email domains can see the event
+        #   "domain_blocklist" -> all except listed email domains can see the event
+        # visible_email_domains is stored as comma-separated string on the model.
+        # ------------------------------------------------------------------
+        events = [
+            # Public event, open to everyone
+            Event(
+                club_id=ai_club.id,
+                title="Intro to Robotics Kickoff",
+                description="Overview of the club projects and a simple robotics demo.",
+                start_time=datetime(2025, 9, 20, 18, 0, 0),
+                end_time=datetime(2025, 9, 20, 20, 0, 0),
+                location="Engineering Building Room 101",
+                is_online=False,
+                join_link=None,
+                capacity=50,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+            # Domain allowlist: only campus emails can see it
+            Event(
+                club_id=ai_club.id,
+                title="Research Reading Group (CS Dept only)",
+                description="Weekly reading group on ML and robotics papers.",
+                start_time=datetime(2025, 9, 22, 18, 0, 0),
+                end_time=datetime(2025, 9, 22, 19, 30, 0),
+                location="Engineering Building Room 202",
+                is_online=False,
+                join_link=None,
+                capacity=20,
+                visibility_mode="domain_allowlist",
+                visible_email_domains="albany.edu,kgu.ac.jp",
+            ),
+            # Online event example
+            Event(
+                club_id=startup_club.id,
+                title="Founder AMA Night (Online)",
+                description="Q&A session with alumni founder over Zoom.",
+                start_time=datetime(2025, 9, 25, 19, 0, 0),
+                end_time=datetime(2025, 9, 25, 20, 30, 0),
+                location="Online",
+                is_online=True,
+                join_link="https://example.com/zoom-link",
+                capacity=100,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+            # Domain blocklist example: hide from generic email domains
+            Event(
+                club_id=jazz_club.id,
+                title="Jazz Jam Session (Campus-only)",
+                description="Open jam session; please bring your own instrument.",
+                start_time=datetime(2025, 9, 27, 19, 30, 0),
+                end_time=datetime(2025, 9, 27, 22, 0, 0),
+                location="Music Hall Studio 3",
+                is_online=False,
+                join_link=None,
+                capacity=30,
+                visibility_mode="domain_blocklist",
+                visible_email_domains="gmail.com,yahoo.com",
+            ),
+            # Simple public sports event
+            Event(
+                club_id=soccer_club.id,
+                title="Pick-up Soccer Game",
+                description="Casual game, all skill levels welcome.",
+                start_time=datetime(2025, 9, 21, 17, 0, 0),
+                end_time=datetime(2025, 9, 21, 18, 30, 0),
+                location="Main Athletic Field",
+                is_online=False,
+                join_link=None,
+                capacity=None,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+        ]
+
+        db.session.add_all(events)
+        db.session.commit()
+
+        print("Seed completed: inserted Users, Clubs, and Events with visibility settings.")
 
 
 if __name__ == "__main__":

@@ -49,6 +49,10 @@ def create_app(config_object=None):
         # Allow running even if auth blueprint is not implemented yet
         pass
 
+    from .events import events_bp
+    app.register_blueprint(events_bp, url_prefix="/api")
+
+
     # ---- Health check route ----
     @app.route("/health")
     def health():
