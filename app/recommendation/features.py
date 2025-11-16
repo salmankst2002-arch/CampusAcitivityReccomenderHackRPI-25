@@ -1,6 +1,7 @@
 # app/recommendation/features.py
 from __future__ import annotations
 
+from app.models import User, Club, Event
 from typing import Tuple, Set
 import numpy as np
 
@@ -141,3 +142,126 @@ def build_feature_vector(user, club) -> np.ndarray:
     # assert phi.shape == (38,)
 
     return phi
+
+# Shared tag vocabulary used both for clubs and events.
+TAG_VOCAB = [
+    "academic_stem_tech",
+    "business_career",
+    "creative_arts",
+    "sports",
+    "gaming",
+    "service",
+    "activism_environment",
+    "politics",
+    "cultural",
+    "faith",
+]
+
+
+def encode_tags_to_vector(tags_str: str) -> np.ndarray:
+    """
+    Convert a comma-separated tag string into a |TAG_VOCAB|-dimensional
+    binary vector. Unknown tags are ignored.
+
+    Example:
+      tags_str = "academic_stem_tech,gaming"
+      -> [1, 0, 0, 0, 1, 0, 0, 0, 0, 0]
+    """
+    vec = np.zeros(len(TAG_VOCAB), dtype=float)
+    if not tags_str:
+        return vec
+
+    tags = [t.strip() for t in tags_str.split(",") if t.strip()]
+    for i, tag in enumerate(TAG_VOCAB):
+        if tag in tags:
+            vec[i] = 1.0
+    return vec
+
+
+def encode_user_interests(user: User) -> np.ndarray:
+    """
+    Encode the user's `interests` (comma-separated TAG_VOCAB entries)
+    into the same |TAG_VOCAB|-dimensional binary vector.
+    """
+    return encode_tags_to_vector(user.interests or "")
+
+
+def build_club_feature_vector(user: User, club: Club) -> np.ndarray:
+    """
+    Build the feature vector used by LinUCB when ranking clubs.
+
+    Here we use a simple concatenation:
+      [user_interest_vector, club_tag_vector]
+
+    Both are |TAG_VOCAB|-dimensional, so the final dimension is 2 * |TAG_VOCAB|.
+    """
+    user_vec = encode_user_interests(user)
+    club_vec = encode_tags_to_vector(club.tags or "")
+
+    return np.concatenate([user_vec, club_vec], axis=0)
+
+
+def build_event_feature_vector(user: User, event: Event) -> np.ndarray:
+    """
+    Build the feature vector used by LinUCB when ranking events.
+
+    Design choice:
+      - We treat the event as inheriting its tags from the parent Club.
+      - So we encode:
+            [user_interest_vector, club_tag_vector, time_features]
+
+        where:
+          - user_interest_vector: |TAG_VOCAB|
+          - club_tag_vector:     |TAG_VOCAB|
+          - time_features:       e.g., a small one-hot or numeric encoding
+                                 for weekday/weekend + time-of-day.
+
+    This keeps the dimensionality small but still allows LinUCB to learn
+    that a user who likes "academic_stem_tech" tends to prefer events
+    from clubs with the same tags, especially on certain days/times.
+    """
+
+    # 1) User interest vector (same as for clubs)
+    user_vec = encode_user_interests(user)
+
+    # 2) Club tag vector: use the tags of the associated club.
+    #    IMPORTANT: Event does not have a 'tags' column; tags live on Club.
+    club = event.club
+    if club is not None:
+        club_tag_vec = encode_tags_to_vector(club.tags or "")
+    else:
+        # Safety fallback; should not usually happen if foreign keys are set properly.
+        club_tag_vec = np.zeros(len(TAG_VOCAB), dtype=float)
+
+    # 3) Time features (very simple example)
+    #    - weekday vs weekend (2 dims, one-hot)
+    #    - evening vs non-evening (2 dims, one-hot)
+    #
+    #    You can refine this later if you want finer time resolution.
+    if event.start_time is not None:
+        weekday = event.start_time.weekday()  # Monday=0, Sunday=6
+        is_weekend = int(weekday >= 5)
+
+        hour = event.start_time.hour
+        # Example: treat 17:00-22:00 as "evening"
+        is_evening = int(17 <= hour <= 22)
+    else:
+        # Unknown time -> encode as zeros
+        is_weekend = 0
+        is_evening = 0
+
+    # One-hot style: [weekday_flag, weekend_flag, non_evening_flag, evening_flag]
+    weekday_flag = 1 - is_weekend
+    weekend_flag = is_weekend
+    evening_flag = is_evening
+    non_evening_flag = 1 - is_evening
+
+    time_vec = np.array(
+        [weekday_flag, weekend_flag, non_evening_flag, evening_flag],
+        dtype=float,
+    )
+
+    # Final feature vector for events: concatenation of all blocks.
+    feat = np.concatenate([user_vec, club_tag_vec, time_vec], axis=0)
+
+    return feat

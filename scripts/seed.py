@@ -1,20 +1,29 @@
 # scripts/seed.py
 import click
+from datetime import datetime
 
 from app import create_app
 from app.extensions import db
 from app.models import User, Club, Event  # Import Event as well
-from datetime import datetime
 
 
 @click.command()
 def seed():
-    """Seed the database with initial Users, Clubs, and Events using the 10-tag vocab."""
+    """
+    Seed the database with initial Users, Clubs, and Events using the 10-tag vocab.
+
+    This script is intended for development only. It:
+      - clears existing User, Club, and Event records
+      - inserts a small, curated set of users and clubs
+      - inserts a set of events for multiple clubs, with different visibility modes
+    """
     app = create_app()
 
     with app.app_context():
+        # ------------------------------------------------------------------
         # Clear existing data (development only)
         # NOTE: Order matters because of foreign key constraints.
+        # ------------------------------------------------------------------
         db.session.query(Event).delete()
         db.session.query(User).delete()
         db.session.query(Club).delete()
@@ -23,8 +32,8 @@ def seed():
         # ------------------------------------------------------------------
         # Users
         # interests must be a comma-separated list of TAG_VOCAB entries:
-        # academic_stem_tech, business_career, creative_arts, sports,
-        # gaming, service, activism_environment, politics, cultural, faith
+        #   academic_stem_tech, business_career, creative_arts, sports,
+        #   gaming, service, activism_environment, politics, cultural, faith
         # ------------------------------------------------------------------
         users = [
             User(
@@ -180,22 +189,30 @@ def seed():
         all_clubs = Club.query.order_by(Club.id).all()
 
         # Simple helpers to pick specific clubs by index
-        ai_club = all_clubs[0]   # AI & Robotics Lab Club
-        startup_club = all_clubs[1]
-        jazz_club = all_clubs[2]
-        soccer_club = all_clubs[3]
+        ai_club = all_clubs[0]      # AI & Robotics Lab Club
+        startup_club = all_clubs[1] # Startup & Entrepreneurship Circle
+        jazz_club = all_clubs[2]    # Campus Jazz Band
+        soccer_club = all_clubs[3]  # Recreational Soccer Club
+        boardgame_club = all_clubs[4]
+        climate_club = all_clubs[6]
+        cultural_club = all_clubs[8]
 
         # ------------------------------------------------------------------
         # Events
+        #
         # visibility_mode:
-        #   "public"          -> visible to everyone
-        #   "members_only"    -> visible only to club members (stub for now)
+        #   "public"           -> visible to everyone
+        #   "members_only"     -> visible only to club members (stub for now)
         #   "domain_allowlist" -> only listed email domains can see the event
         #   "domain_blocklist" -> all except listed email domains can see the event
-        # visible_email_domains is stored as comma-separated string on the model.
+        #
+        # visible_email_domains is stored as a comma-separated string on the model.
+        #
+        # NOTE:
+        #   All dates are example dates in Fall 2025 and can be adjusted freely.
         # ------------------------------------------------------------------
         events = [
-            # Public event, open to everyone
+            # ----- AI & Robotics Lab Club events -----
             Event(
                 club_id=ai_club.id,
                 title="Intro to Robotics Kickoff",
@@ -209,7 +226,6 @@ def seed():
                 visibility_mode="public",
                 visible_email_domains=None,
             ),
-            # Domain allowlist: only campus emails can see it
             Event(
                 club_id=ai_club.id,
                 title="Research Reading Group (CS Dept only)",
@@ -223,11 +239,44 @@ def seed():
                 visibility_mode="domain_allowlist",
                 visible_email_domains="albany.edu,kgu.ac.jp",
             ),
-            # Online event example
+            Event(
+                club_id=ai_club.id,
+                title="Beginner Robotics Workshop",
+                description=(
+                    "Hands-on workshop for first-year students to build a simple line-following robot. "
+                    "No prior experience required."
+                ),
+                start_time=datetime(2025, 10, 1, 18, 30, 0),  # Wed evening
+                end_time=datetime(2025, 10, 1, 20, 30, 0),
+                location="Engineering Building Lab 2",
+                is_online=False,
+                join_link=None,
+                capacity=40,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+            Event(
+                club_id=ai_club.id,
+                title="AI Study Night: Intro to Large Language Models",
+                description=(
+                    "Study session on AI fundamentals and large language models, "
+                    "with short lightning talks and group Q&A."
+                ),
+                start_time=datetime(2025, 10, 8, 19, 0, 0),  # Wed evening
+                end_time=datetime(2025, 10, 8, 21, 0, 0),
+                location="Engineering Building Room 305",
+                is_online=False,
+                join_link=None,
+                capacity=60,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+
+            # ----- Startup & Entrepreneurship Circle events -----
             Event(
                 club_id=startup_club.id,
                 title="Founder AMA Night (Online)",
-                description="Q&A session with alumni founder over Zoom.",
+                description="Q&A session with an alumni founder over Zoom.",
                 start_time=datetime(2025, 9, 25, 19, 0, 0),
                 end_time=datetime(2025, 9, 25, 20, 30, 0),
                 location="Online",
@@ -237,7 +286,24 @@ def seed():
                 visibility_mode="public",
                 visible_email_domains=None,
             ),
-            # Domain blocklist example: hide from generic email domains
+            Event(
+                club_id=startup_club.id,
+                title="Startup Ideation Workshop",
+                description=(
+                    "Interactive workshop to brainstorm and refine startup ideas, "
+                    "with group feedback and mentor support."
+                ),
+                start_time=datetime(2025, 10, 3, 18, 30, 0),  # Fri evening
+                end_time=datetime(2025, 10, 3, 20, 30, 0),
+                location="Business School Lounge",
+                is_online=False,
+                join_link=None,
+                capacity=40,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+
+            # ----- Campus Jazz Band events -----
             Event(
                 club_id=jazz_club.id,
                 title="Jazz Jam Session (Campus-only)",
@@ -251,7 +317,21 @@ def seed():
                 visibility_mode="domain_blocklist",
                 visible_email_domains="gmail.com,yahoo.com",
             ),
-            # Simple public sports event
+            Event(
+                club_id=jazz_club.id,
+                title="Midterm Stress Relief Jazz Night",
+                description="Casual performance and open stage, focused on relaxing before midterms.",
+                start_time=datetime(2025, 10, 15, 20, 0, 0),
+                end_time=datetime(2025, 10, 15, 22, 0, 0),
+                location="Music Hall Studio 1",
+                is_online=False,
+                join_link=None,
+                capacity=80,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+
+            # ----- Recreational Soccer Club events -----
             Event(
                 club_id=soccer_club.id,
                 title="Pick-up Soccer Game",
@@ -262,6 +342,103 @@ def seed():
                 is_online=False,
                 join_link=None,
                 capacity=None,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+            Event(
+                club_id=soccer_club.id,
+                title="Evening Soccer Scrimmage",
+                description="Friendly scrimmage under the lights, open to all students.",
+                start_time=datetime(2025, 10, 2, 19, 0, 0),  # Thu evening
+                end_time=datetime(2025, 10, 2, 20, 30, 0),
+                location="Main Athletic Field",
+                is_online=False,
+                join_link=None,
+                capacity=None,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+
+            # ----- Board Games & Tabletop Society events -----
+            Event(
+                club_id=boardgame_club.id,
+                title="Friday Board Game Night",
+                description="Weekly board game night with modern board games and card games.",
+                start_time=datetime(2025, 9, 26, 19, 0, 0),
+                end_time=datetime(2025, 9, 26, 22, 0, 0),
+                location="Student Lounge",
+                is_online=False,
+                join_link=None,
+                capacity=40,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+            Event(
+                club_id=boardgame_club.id,
+                title="Tabletop RPG One-Shot Marathon",
+                description="Back-to-back one-shot RPG sessions, perfect for beginners.",
+                start_time=datetime(2025, 10, 10, 18, 0, 0),
+                end_time=datetime(2025, 10, 10, 23, 0, 0),
+                location="Student Lounge",
+                is_online=False,
+                join_link=None,
+                capacity=30,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+
+            # ----- Climate Action & Sustainability Group events -----
+            Event(
+                club_id=climate_club.id,
+                title="Campus Sustainability Workshop",
+                description="Interactive workshop on reducing campus waste and improving sustainability.",
+                start_time=datetime(2025, 10, 5, 16, 0, 0),
+                end_time=datetime(2025, 10, 5, 18, 0, 0),
+                location="Science Building Room 210",
+                is_online=False,
+                join_link=None,
+                capacity=50,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+            Event(
+                club_id=climate_club.id,
+                title="Climate Action Planning Meeting",
+                description="Planning session for the upcoming climate action campaign on campus.",
+                start_time=datetime(2025, 10, 12, 18, 0, 0),
+                end_time=datetime(2025, 10, 12, 19, 30, 0),
+                location="Science Building Room 210",
+                is_online=False,
+                join_link=None,
+                capacity=25,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+
+            # ----- International & Cultural Exchange Club events -----
+            Event(
+                club_id=cultural_club.id,
+                title="International Potluck Night",
+                description="Bring a dish from your culture and share stories with other students.",
+                start_time=datetime(2025, 10, 4, 18, 0, 0),
+                end_time=datetime(2025, 10, 4, 21, 0, 0),
+                location="Global Lounge",
+                is_online=False,
+                join_link=None,
+                capacity=60,
+                visibility_mode="public",
+                visible_email_domains=None,
+            ),
+            Event(
+                club_id=cultural_club.id,
+                title="Language Exchange Cafe",
+                description="Rotate between language tables and practice different languages.",
+                start_time=datetime(2025, 10, 11, 17, 30, 0),
+                end_time=datetime(2025, 10, 11, 19, 30, 0),
+                location="Global Lounge",
+                is_online=False,
+                join_link=None,
+                capacity=40,
                 visibility_mode="public",
                 visible_email_domains=None,
             ),
