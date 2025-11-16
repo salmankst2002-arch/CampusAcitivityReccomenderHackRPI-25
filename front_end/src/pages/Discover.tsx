@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import type { Club, SwipeRecord } from "../types/backend";
+import type { Club } from "../types/backend";
 import { SwipeDeck } from "../components/SwipeDeck";
 import { BACKEND_URL } from "../config";
 
@@ -16,26 +16,11 @@ export default function Discover() {
         const res = await axios.get(`${BACKEND_URL}/api/recommend`, {
           params: { user_id: USER_ID },
         });
-        setClubs(await res.data);
+        console.log("Recommended clubs:", res.data);
+        setClubs(res.data);
       } catch (error) {
-        // todo: replace with error logging
-        setClubs([
-          {
-            id: 1,
-            name: "Chess Club",
-            description: "Casual games",
-            meeting_time: "Thu 6pm",
-            location: "Union 204",
-          },
-          {
-            id: 2,
-            name: "Robotics",
-            description: "Beginner workshop",
-            meeting_time: "Mon 4pm",
-            location: "Lab 7",
-          },
-        ]);
         console.error("Failed to load clubs:", error);
+        setClubs([]);
       } finally {
         setLoading(false);
       }
@@ -44,21 +29,28 @@ export default function Discover() {
   }, []);
 
   const handleSwipe = async (club_id: number, vote: "like" | "dislike") => {
-    setClubs((prev) => prev.filter((c) => c.id !== club_id));
+    setClubs((prev) => prev.filter((c) => c.club_id !== club_id));
 
-    const record: SwipeRecord = {
-      id: Date.now(),
-      user_id: USER_ID,
-      club_id,
-      liked: vote === "like",
-      created_at: new Date(),
-    };
-
-    // Send swipe record to backend
+    // Send swipe record to backend with only required fields
     try {
-      await axios.post(`${BACKEND_URL}/api/swipe`, record);
+      const payload = {
+        user_id: USER_ID,
+        club_id,
+        liked: vote === "like",
+      };
+      console.log("Sending swipe payload:", payload);
+      const response = await axios.post(`${BACKEND_URL}/api/swipe`, payload, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      console.log("Swipe response:", response);
     } catch (error) {
       console.error("Failed to send swipe:", error);
+      if (axios.isAxiosError(error)) {
+        console.error("Response data:", error.response?.data);
+        console.error("Response status:", error.response?.status);
+      }
     }
   };
 
@@ -67,9 +59,9 @@ export default function Discover() {
       {title}
       <main className="flex-1 w-full px-4 mt-6 overflow-y-auto">
         {loading ? (
-          <div className="mx-auto">Loading...</div>
+          <div className="mx-auto items-center">Loading...</div>
         ) : (
-          <SwipeDeck activities={clubs} onSwipe={handleSwipe} />
+          <SwipeDeck clubs={clubs} onSwipe={handleSwipe} />
         )}
       </main>
     </div>

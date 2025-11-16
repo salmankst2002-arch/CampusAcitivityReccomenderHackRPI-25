@@ -24,7 +24,7 @@ export const Card: React.FC<CardProps> = ({ activity, onSwipe }) => {
     setStyle({ transform: "", transition: "" });
     offsetX.current = 0;
     offsetY.current = 0;
-  }, [activity.id]);
+  }, [activity.club_id]);
 
   const applyTransform = (x: number, y: number, rot: number) => {
     setStyle({
@@ -60,13 +60,13 @@ export const Card: React.FC<CardProps> = ({ activity, onSwipe }) => {
         transform: `translate(1000px, ${offsetY.current}px) rotate(30deg)`,
         transition: "transform 300ms ease-out",
       });
-      setTimeout(() => onSwipe(activity.id, "like"), 300);
+      setTimeout(() => onSwipe(activity.club_id, "like"), 300);
     } else if (x < -SWIPE_THRESHOLD) {
       setStyle({
         transform: `translate(-1000px, ${offsetY.current}px) rotate(-30deg)`,
         transition: "transform 300ms ease-out",
       });
-      setTimeout(() => onSwipe(activity.id, "dislike"), 300);
+      setTimeout(() => onSwipe(activity.club_id, "dislike"), 300);
     } else {
       setStyle({
         transform: "",
@@ -91,7 +91,7 @@ export const Card: React.FC<CardProps> = ({ activity, onSwipe }) => {
       }deg)`,
       transition: "transform 300ms ease-out",
     });
-    setTimeout(() => onSwipe(activity.id, v), 300);
+    setTimeout(() => onSwipe(activity.club_id, v), 300);
   };
 
   return (

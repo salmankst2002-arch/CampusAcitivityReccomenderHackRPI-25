@@ -1,5 +1,5 @@
 export interface Club {
-  id: number;
+  club_id: number;
   name: string;
   description?: string;
   tags?: string; // comma‑separated, e.g. "AI,Programming,Tech"

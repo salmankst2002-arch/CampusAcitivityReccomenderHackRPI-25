@@ -28,6 +28,7 @@ def seed():
         # ------------------------------------------------------------------
         users = [
             User(
+                id=1,
                 email="alice@example.com",
                 name="Alice",
                 year="freshman",

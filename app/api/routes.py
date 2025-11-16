@@ -1,11 +1,12 @@
 # app/api/routes.py
 from flask import Blueprint, jsonify, request, current_app
+from flask_cors import CORS
 
 from ..extensions import db
 from ..models import User, Club, Swipe
 
 api_bp = Blueprint("api", __name__)
-
+CORS(app=api_bp) # allow requests of all origin
 
 @api_bp.route("/ping")
 def ping():

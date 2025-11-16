@@ -19,9 +19,9 @@ export default function Matches() {
 
       for (const club of recommendedClubs) {
         const events: Event[] = (
-          await axios.get(`${BACKEND_URL}/api/clubs/${club.id}/events`)
+          await axios.get(`${BACKEND_URL}/api/clubs/${club.club_id}/events`)
         ).data;
-        setClubEvents({ ...clubEvents, [club.id]: events });
+        setClubEvents({ ...clubEvents, [club.club_id]: events });
       }
     };
     fetchEvents();
