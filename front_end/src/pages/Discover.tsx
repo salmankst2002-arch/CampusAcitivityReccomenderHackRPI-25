@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import type { Club, SwipeRecord } from "../types/club";
+import axios from "axios";
+import type { Club, SwipeRecord } from "../types/backend";
 import { SwipeDeck } from "../components/SwipeDeck";
+import { BACKEND_URL } from "../config";
 
 export default function Discover() {
-  const [activities, setActivities] = useState<Club[]>([]);
-  const [swipes, setSwipes] = useState<SwipeRecord[]>([]);
+  const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
   const USER_ID = 1;
 
@@ -12,11 +13,13 @@ export default function Discover() {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/clubs");
-        const raw = await res.json();
-        setActivities(Array.isArray(raw) ? raw : []);
-      } catch {
-        setActivities([
+        const res = await axios.get(`${BACKEND_URL}/api/recommend`, {
+          params: { user_id: USER_ID },
+        });
+        setClubs(await res.data);
+      } catch (error) {
+        // todo: replace with error logging
+        setClubs([
           {
             id: 1,
             name: "Chess Club",
@@ -32,6 +35,7 @@ export default function Discover() {
             location: "Lab 7",
           },
         ]);
+        console.error("Failed to load clubs:", error);
       } finally {
         setLoading(false);
       }
@@ -39,8 +43,8 @@ export default function Discover() {
     load();
   }, []);
 
-  const handleSwipe = (club_id: number, vote: "like" | "dislike") => {
-    setActivities((prev) => prev.filter((c) => c.id !== club_id));
+  const handleSwipe = async (club_id: number, vote: "like" | "dislike") => {
+    setClubs((prev) => prev.filter((c) => c.id !== club_id));
 
     const record: SwipeRecord = {
       id: Date.now(),
@@ -50,19 +54,31 @@ export default function Discover() {
       created_at: new Date(),
     };
 
-    setSwipes((s) => [...s, record]);
+    // Send swipe record to backend
+    try {
+      await axios.post(`${BACKEND_URL}/api/swipe`, record);
+    } catch (error) {
+      console.error("Failed to send swipe:", error);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-tr from-[#f7f0e6] to-[#fff1f8] pb-16">
-      <header className="p-4 max-w-4xl mx-auto">RetroCampus</header>
-      <main className="max-w-4xl mx-auto px-4 mt-6">
+    <div className="h-full bg-gradient-to-tr from-[#f7f0e6] to-[#fff1f8] flex flex-col">
+      {title}
+      <main className="flex-1 w-full px-4 mt-6 overflow-y-auto">
         {loading ? (
-          <div>Loading...</div>
+          <div className="mx-auto">Loading...</div>
         ) : (
-          <SwipeDeck activities={activities} onSwipe={handleSwipe} />
+          <SwipeDeck activities={clubs} onSwipe={handleSwipe} />
         )}
       </main>
     </div>
   );
 }
+
+const title = (
+  <header className="p-4 max-w-4xl mx-auto">
+    <h1>RetroCampus</h1>
+    {/* todo: make aliased font */}
+  </header>
+);

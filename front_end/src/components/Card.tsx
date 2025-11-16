@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { FiHeart, FiX, FiCalendar } from "react-icons/fi";
-import type { Club } from "../types/club";
+import type { Club } from "../types/backend";
 
 export interface CardProps {
   activity: Club;

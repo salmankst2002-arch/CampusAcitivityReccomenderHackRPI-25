@@ -1,4 +1,4 @@
-import type { Club } from "../types/club";
+import type { Club } from "../types/backend";
 import { Card } from "./Card";
 
 export const SwipeDeck: React.FC<{
