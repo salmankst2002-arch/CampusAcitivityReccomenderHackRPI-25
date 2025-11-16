@@ -3,7 +3,7 @@ from flask import Blueprint, jsonify, request, current_app
 from flask_cors import CORS
 
 from ..extensions import db
-from ..models import User, Club, Swipe
+from ..models import User, Club, Swipe, Event
 from ..agents.gemini_agent import chat_with_linucb  # NEW: import the Gemini chat helper
 from ..recommendation.linucb import update_global_linucb_from_swipe  # 追加
 from ..agents.swipe_tool import record_swipe_with_linucb  # NEW import
@@ -20,24 +20,23 @@ def ping():
 def recommend_clubs():
     """
     Recommend a list of clubs for a given user.
-    For now: return clubs that the user has not swiped yet (random order).
+
+    Primary behavior:
+      - Return clubs that the user has NOT swiped yet, ordered by id desc.
+    Fallback:
+      - If the user has already swiped all clubs, fall back to returning
+        all clubs (up to `limit`) so that the UI always has something to show.
     """
     user_id = request.args.get("user_id", type=int)
     limit = request.args.get("limit", default=10, type=int)
 
     if user_id is None:
-        return (
-            jsonify({"error": "user_id query parameter is required"}),
-            400,
-        )
+        return jsonify({"error": "user_id query parameter is required"}), 400
 
-    # Ensure the user exists (optional but helpful)
+    # Ensure the user exists
     user = User.query.get(user_id)
     if user is None:
-        return (
-            jsonify({"error": f"User with id {user_id} does not exist"}),
-            404,
-        )
+        return jsonify({"error": f"User with id {user_id} does not exist"}), 404
 
     # Subquery: all club_ids that this user has already swiped
     swiped_club_ids_subq = (
@@ -46,16 +45,28 @@ def recommend_clubs():
         .subquery()
     )
 
-    # Query clubs that are not in the swiped list
-    # For now, order by id descending (or random if you want).
+    # First, try: clubs that are not in the swiped list
     clubs_query = (
         Club.query
         .filter(~Club.id.in_(swiped_club_ids_subq))
         .order_by(Club.id.desc())
         .limit(limit)
     )
-
     clubs = clubs_query.all()
+
+    # Fallback: if user has swiped every club, still return some clubs
+    if not clubs:
+        current_app.logger.info(
+            "[API/recommend] No unswiped clubs for user_id=%s, "
+            "falling back to ALL clubs.",
+            user_id,
+        )
+        clubs = (
+            Club.query
+            .order_by(Club.id.desc())
+            .limit(limit)
+            .all()
+        )
 
     result = []
     for club in clubs:
@@ -71,6 +82,96 @@ def recommend_clubs():
         )
 
     return jsonify(result)
+
+@api_bp.route("/matches", methods=["GET"])
+def get_user_matches():
+    """
+    Return clubs that the user has liked, along with their events.
+
+    Response format:
+    [
+      {
+        "club_id": 1,
+        "club_name": "...",
+        "club_tags": ["academic_stem_tech"],
+        "events": [
+          {
+            "event_id": 1,
+            "title": "...",
+            "description": "...",
+            "start_time": "...",
+            "location": "...",
+          },
+          ...
+        ],
+      },
+      ...
+    ]
+    """
+    user_id = request.args.get("user_id", type=int)
+    if user_id is None:
+        return jsonify({"error": "user_id query parameter is required"}), 400
+
+    user = User.query.get(user_id)
+    if user is None:
+        return jsonify({"error": f"User with id {user_id} does not exist"}), 404
+
+    # 1) Find liked swipes for this user
+    liked_swipes = Swipe.query.filter_by(user_id=user_id, liked=True).all()
+    club_ids = [s.club_id for s in liked_swipes]
+
+    if not club_ids:
+        return jsonify([])
+
+    # 2) Load clubs
+    clubs = Club.query.filter(Club.id.in_(club_ids)).all()
+    clubs_by_id = {c.id: c for c in clubs}
+
+    # 3) Load events for those clubs (future events only if you want)
+    events = (
+        Event.query
+        .filter(Event.club_id.in_(club_ids))
+        .order_by(Event.start_time.asc())
+        .all()
+    )
+
+    events_by_club = {}
+    for ev in events:
+        events_by_club.setdefault(ev.club_id, []).append(ev)
+
+    # 4) Format response
+    results = []
+    for cid in club_ids:
+        club = clubs_by_id.get(cid)
+        if club is None:
+            continue
+
+        tags_list = []
+        if club.tags:
+            tags_list = [t.strip() for t in club.tags.split(",") if t.strip()]
+
+        ev_list = []
+        for ev in events_by_club.get(cid, []):
+            ev_list.append(
+                {
+                    "event_id": ev.id,
+                    "title": ev.title,
+                    "description": ev.description,
+                    "start_time": ev.start_time.isoformat() if ev.start_time else None,
+                    "location": ev.location,
+                }
+            )
+
+        results.append(
+            {
+                "club_id": club.id,
+                "club_name": club.name,
+                "club_tags": tags_list,
+                "events": ev_list,
+            }
+        )
+
+    return jsonify(results)
 
 
 @api_bp.route("/swipe", methods=["POST"])
