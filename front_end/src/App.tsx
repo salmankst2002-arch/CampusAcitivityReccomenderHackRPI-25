@@ -4,6 +4,7 @@ import Navigation from "./components/Navigation";
 import Discover from "./pages/Discover";
 import Matches from "./pages/Matches";
 import Login from "./pages/Login";
+import SignUp from "./pages/SignUp";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 
 const RequireAuth: React.FC<{ children: JSX.Element }> = ({ children }) => {
@@ -24,6 +25,7 @@ const App: React.FC = () => {
           <main className="flex-1 p-4 overflow-y-auto">
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<SignUp />} />
 
               <Route
                 path="/"

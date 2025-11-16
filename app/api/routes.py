@@ -16,6 +16,73 @@ def ping():
     return jsonify({"message": "pong"})
 
 
+@api_bp.route("/users", methods=["POST"])
+def create_user():
+    """
+    Create a new user with email, name, year, and major.
+    
+    Expected JSON body:
+    {
+        "email": "user@example.com",
+        "name": "John Doe",
+        "year": "freshman",
+        "major": "Computer Science"
+    }
+    
+    Returns:
+    {
+        "user_id": 1,
+        "email": "user@example.com",
+        "name": "John Doe",
+        "year": "freshman",
+        "major": "Computer Science"
+    }
+    """
+    data = request.get_json(silent=True) or {}
+    
+    email = data.get("email", "").strip()
+    name = data.get("name", "").strip()
+    year = data.get("year", "").strip()
+    major = data.get("major", "").strip()
+    
+    # Validate required fields
+    if not email:
+        return jsonify({"error": "email is required"}), 400
+    if not name:
+        return jsonify({"error": "name is required"}), 400
+    
+    # Check if email already exists
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user:
+        return jsonify({"error": "email already exists"}), 409
+    
+    # Create new user
+    new_user = User(
+        id=int(name.__hash__() % (10 ** 8)),  # Simple hash-based ID generation
+        email=email,
+        name=name,
+        year=year if year else None,
+        major=major if major else None
+    )
+    
+    try:
+        db.session.add(new_user)
+        db.session.commit()
+        
+        return jsonify({
+            "user_id": new_user.id,
+            "email": new_user.email,
+            "name": new_user.name,
+            "year": new_user.year,
+            "major": new_user.major,
+            "created_at": new_user.created_at.isoformat() if new_user.created_at else None
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error creating user: {str(e)}")
+        return jsonify({"error": "Failed to create user"}), 500
+
+
 @api_bp.route("/recommend", methods=["GET"])
 def recommend_clubs():
     """

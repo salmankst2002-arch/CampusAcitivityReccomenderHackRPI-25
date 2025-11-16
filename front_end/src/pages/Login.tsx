@@ -1,5 +1,6 @@
 // front_end/src/pages/Login.tsx
-import { FormEvent, useState } from "react";
+import type { FormEvent } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
@@ -22,7 +23,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [selectedId, setSelectedId] = useState<number>(userId ?? 1);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleLoginSubmit = (e: FormEvent) => {
     e.preventDefault();
     setUserId(selectedId);
     // After "login", go to Discover page
@@ -33,13 +34,14 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#f7f0e6] to-[#fff1f8]">
       <div className="w-full max-w-md bg-white shadow-lg rounded-2xl p-8">
         <h1 className="text-2xl font-bold mb-4 text-center text-brown-800">
-          RetroCampus Login
+          RetroCampus
         </h1>
+
         <p className="text-sm text-gray-600 mb-6 text-center">
           For the hackathon demo, please choose a demo student profile to log in as.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleLoginSubmit} className="space-y-4">
           <label className="block text-sm font-medium text-gray-700">
             Select your demo user
             <select
@@ -62,6 +64,18 @@ export default function Login() {
             Enter RetroCampus
           </button>
         </form>
+
+        <div className="mt-6 border-t pt-6">
+          <p className="text-sm text-gray-600 mb-4 text-center">
+            Don't want to use a demo profile?
+          </p>
+          <button
+            onClick={() => navigate("/signup")}
+            className="w-full rounded-lg bg-blue-600 text-white font-semibold py-2 hover:bg-blue-700 transition-colors"
+          >
+            Create New Account
+          </button>
+        </div>
       </div>
     </div>
   );
