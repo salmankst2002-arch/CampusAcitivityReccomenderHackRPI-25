@@ -1,29 +1,36 @@
+// Matches.tsx（イメージ）
+
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { BACKEND_URL } from "../config";
-import type { Event, Club } from "../types/backend";
 
-type MatchItem = {
+type Match = {
   club_id: number;
   club_name: string;
   club_tags: string[];
-  events: Event[];
+  events: {
+    event_id: number;
+    title: string;
+    description: string | null;
+    start_time: string | null;
+    location: string | null;
+  }[];
 };
 
-const USER_ID = 1;
+const USER_ID = 1; // まずは固定で 1 にして挙動確認
 
 export default function Matches() {
-  const [matches, setMatches] = useState<MatchItem[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchMatches = async () => {
+    const load = async () => {
       setLoading(true);
       try {
-        const res = await axios.get<MatchItem[]>(`${BACKEND_URL}/api/matches`, {
+        const res = await axios.get(`${BACKEND_URL}/api/matches`, {
           params: { user_id: USER_ID },
         });
-        console.log("Matches response:", res.data);
+        console.log("Matches API response:", res.data);
         setMatches(res.data);
       } catch (err) {
         console.error("Failed to load matches:", err);
@@ -32,69 +39,51 @@ export default function Matches() {
         setLoading(false);
       }
     };
-
-    fetchMatches();
+    load();
   }, []);
 
   if (loading) {
-    return <div className="p-4">Loading your saved matches...</div>;
+    return <div className="p-4">Loading matches...</div>;
   }
 
-  if (matches.length === 0) {
+  if (!matches.length) {
     return (
       <div className="p-4">
-        <h1 className="text-2xl font-bold mb-2">Your Matches</h1>
-        <p className="text-sm text-gray-600">
-          You have no liked clubs yet. Swipe right on clubs in Discover to save them here.
-        </p>
+        <h1 className="text-3xl font-bold mb-2">Your Matches</h1>
+        <p>You have no liked clubs yet. Swipe right on clubs in Discover to save them here.</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-bold">Your Matches</h1>
-
-      {matches.map((match) => (
-        <section key={match.club_id} className="bg-white rounded-xl shadow p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xl font-semibold">{match.club_name}</h2>
-            {match.club_tags && match.club_tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 text-xs text-gray-500">
-                {match.club_tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-0.5 rounded-full bg-gray-100 border border-gray-200"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {match.events.length === 0 ? (
-            <p className="text-sm text-gray-600">
-              No upcoming events for this club yet.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {match.events.map((ev) => (
-                <li key={ev.event_id} className="border-t pt-2 first:border-none first:pt-0">
-                  <div className="font-medium">{ev.title}</div>
-                  <div className="text-xs text-gray-600">
-                    {ev.start_time && (
-                      <span className="mr-2">
-                        {new Date(ev.start_time).toLocaleString()}
-                      </span>
-                    )}
-                    {ev.location && <span>@ {ev.location}</span>}
-                  </div>
+    <div className="p-4">
+      <h1 className="text-3xl font-bold mb-4">Your Matches</h1>
+      {matches.map((m) => (
+        <div key={m.club_id} className="mb-4 rounded-lg shadow bg-white p-3">
+          <h2 className="text-xl font-semibold">{m.club_name}</h2>
+          <p className="text-sm text-gray-600">
+            Tags: {m.club_tags.join(", ") || "—"}
+          </p>
+          {m.events.length ? (
+            <ul className="mt-2 space-y-1">
+              {m.events.map((ev) => (
+                <li key={ev.event_id} className="text-sm">
+                  <span className="font-medium">{ev.title}</span>
+                  {ev.start_time && (
+                    <span className="ml-2 text-gray-500">
+                      ({new Date(ev.start_time).toLocaleString()})
+                    </span>
+                  )}
+                  {ev.location && (
+                    <span className="ml-2 text-gray-500">＠{ev.location}</span>
+                  )}
                 </li>
               ))}
             </ul>
+          ) : (
+            <p className="mt-2 text-sm text-gray-500">No upcoming events yet.</p>
           )}
-        </section>
+        </div>
       ))}
     </div>
   );

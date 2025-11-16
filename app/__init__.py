@@ -1,6 +1,7 @@
 # app/__init__.py
 import os
 from flask import Flask, jsonify
+from flask_cors import CORS
 
 from .extensions import db, migrate
 
@@ -52,6 +53,7 @@ def create_app(config_object=None):
     from .events import events_bp
     app.register_blueprint(events_bp, url_prefix="/api")
 
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
 
     # ---- Health check route ----
     @app.route("/health")
